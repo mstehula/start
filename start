@@ -1,0 +1,111 @@
+--[[
+	start - a simple multi-script startup function
+   
+	Warning: This takes over the startup files, although it creates a backup
+		You will manually have to include your startup script into the autorun
+		folder
+]]
+
+--[[
+	Forward Declarations
+]]
+
+local private
+
+local startup_file = 
+	"-- Set local variables\n"..
+	"local path = \"/autorun\"\n\n"..
+	"-- Run autorun files in directory\n"..
+	"if fs.exists(\"/autorun\") and fs.isDir(\"/autorun\") then\n"..
+	"  local files = fs.list(\"/autorun\")\n"..
+	"  table.sort(files)\n"..
+	"  for n, file in ipairs(files) do\n"..
+	"    if string.sub(file, 1, 1) ~= \".\" and string.sub(file, -4, -1) ~= \".dis\" then\n"..
+	"      local path = \"/autorun/\"..file\n"..
+	"      if not fs.isDir(path) then\n"..
+	"        shell.run(path)\n"..
+	"      end\n"..
+	"    end\n"..
+	"  end\n"..
+	"end\n"
+	
+--[[
+	Public Interface
+]]
+
+function enable(file)
+	if fs.exists(file) or fs.exists(file.."dis") then
+		if string.sub(file, -4, -1) == "dis" then
+			return shell.run("move", file, file..dis)
+		end
+	end
+	return false
+end
+
+function disable(file)
+	if fs.exists(file) or fs.exists(file.."dis") then
+		if string.sub(file, -4, -1) ~= "dis" then
+			return shell.run("move", file, file..dis)
+		end
+	end
+	return false
+end
+
+--[[
+	Private Interface
+]]
+
+-- Private namespace to prevent internal functions from leaking
+private = {} 
+
+function private.backup_startup()
+	startup = "/startup"
+	startup_backup = "/startup.bak"
+	for i=4,0,-1 do
+		startup_backup_i = startup_backup..tostring(i)
+		if fs.exists(startup_backup_i) and not fs.isDir(startup_backup_i) then
+			shell.run("move",startup_backup_i, startup_backup..tostring(i+1))
+		end
+	end
+	if fs.exists(startup) and not fs.isDir(startup) then
+		shell.run("move", startup, startup_backup..tostring(0))
+	end
+end
+
+function private.write_startup()
+	fs.makeDir("/autorun")
+	
+	file = io.open("/startup", "w")
+	io.output(file)
+	io.close(file)
+	
+	file = io.open("/startup", "w")
+	io.output(file)
+	io.write(startup_file)
+	io.flush()
+	io.close(file)
+end
+
+--[[
+	Initialization
+]]
+
+args = {...}
+
+if #args > 0 then
+	if #args == 1 then
+		if args[1] == "init" then
+			private.backup_startup()
+			private.write_startup()
+		end
+	elseif #args == 2 then
+		if args[1] == "init" and args[2] == "true" then
+			private.backup_startup()
+			private.write_startup()
+		elseif args[1] == "init" and args[2] == "false" then
+			private.write_startup()
+		end
+	
+	end
+	
+end
